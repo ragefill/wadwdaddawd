@@ -51,22 +51,36 @@ namespace GoreSandbox.Editor
             light.intensity = 1.2f;
             light.color = new Color(1f, 0.95f, 0.85f);
 
-            // ---------- Player rig ----------
+            // ---------- Player rig (VR) ----------
             var rig = new GameObject("[GS] PlayerRig");
-            rig.transform.position = new Vector3(0, 1.2f, 0);
+            rig.transform.position = new Vector3(0, 0f, 0);
+            var cc = rig.AddComponent<CharacterController>();
+            cc.height = 1.8f;
+            cc.center = new Vector3(0, 0.9f, 0);
+            cc.radius = 0.2f;
             var locomotion = rig.AddComponent<GorillaLocomotion>();
 
+            // Camera offset - standard VR rig structure
+            var camOffset = new GameObject("[GS] CameraOffset");
+            camOffset.transform.SetParent(rig.transform, false);
+            camOffset.transform.localPosition = new Vector3(0, 1.6f, 0);
+
             var camGO = new GameObject("[GS] Head");
-            camGO.transform.SetParent(rig.transform, false);
-            camGO.transform.localPosition = new Vector3(0, 1.1f, 0);
+            camGO.transform.SetParent(camOffset.transform, false);
+            camGO.transform.localPosition = Vector3.zero;
             var camera = camGO.AddComponent<Camera>();
             camera.tag = "MainCamera";
+            camera.nearClipPlane = 0.05f;
             camera.backgroundColor = new Color(0.1f, 0.1f, 0.12f);
+            camGO.AddComponent<AudioListener>();
+            camGO.AddComponent<XRHeadDriver>();
+
             var player = rig.AddComponent<Player>();
             player.head = camGO.transform;
 
-            var lhand = MakeHand("[GS] LeftHand", rig.transform, new Vector3(-0.35f, 0.6f, 0.4f), XRNode.LeftHand);
-            var rhand = MakeHand("[GS] RightHand", rig.transform, new Vector3(0.35f, 0.6f, 0.4f), XRNode.RightHand);
+            var lhand = MakeHand("[GS] LeftHand", camOffset.transform, new Vector3(-0.35f, -0.4f, 0.4f), XRNode.LeftHand);
+            var rhand = MakeHand("[GS] RightHand", camOffset.transform, new Vector3(0.35f, -0.4f, 0.4f), XRNode.RightHand);
+
             locomotion.leftHand = lhand.transform;
             locomotion.rightHand = rhand.transform;
             locomotion.head = camGO.transform;
@@ -107,8 +121,12 @@ namespace GoreSandbox.Editor
             canvasGO.transform.SetParent(rig.transform, false);
             var canvas = canvasGO.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.WorldSpace;
-            var rect = canvasGO.AddComponent<RectTransform>();
+            var rect = canvasGO.GetComponent<RectTransform>();
+            if (rect == null) rect = canvasGO.AddComponent<RectTransform>();
             rect.sizeDelta = new Vector2(700, 500);
+            canvasGO.transform.localScale = Vector3.one * 0.002f;
+            canvasGO.transform.localPosition = new Vector3(0, 1.5f, 1.2f);
+            canvasGO.transform.localRotation = Quaternion.Euler(0, 180f, 0);
             canvasGO.AddComponent<GraphicRaycaster>();
             var sm = canvasGO.AddComponent<SpawnMenu>();
             sm.canvas = canvas;
@@ -202,6 +220,20 @@ namespace GoreSandbox.Editor
             var go = new GameObject(name);
             go.transform.SetParent(parent, false);
             go.transform.localPosition = localPos;
+
+            // Visible hand mesh
+            var vis = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            vis.name = name + "_Visual";
+            vis.transform.SetParent(go.transform, false);
+            vis.transform.localScale = Vector3.one * 0.12f;
+            Object.DestroyImmediate(vis.GetComponent<Collider>());
+            var mr = vis.GetComponent<MeshRenderer>();
+            mr.sharedMaterial = new Material(Shader.Find("Standard")) { color = new Color(0.85f, 0.75f, 0.65f) };
+
+            // Track real VR controller
+            var driver = go.AddComponent<XRHandDriver>();
+            driver.node = node;
+
             var col = go.AddComponent<BoxCollider>();
             col.size = Vector3.one * 0.18f;
             col.isTrigger = true; // trigger so PunchImpact.OnTriggerEnter fires

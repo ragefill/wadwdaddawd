@@ -53,6 +53,12 @@ namespace GoreSandbox
             if (!head) head = Camera.main ? Camera.main.transform : transform;
         }
 
+        void Start()
+        {
+            leftLastPos = leftHand ? leftHand.position : transform.position;
+            rightLastPos = rightHand ? rightHand.position : transform.position;
+        }
+
         void Update()
         {
             float dt = Time.deltaTime;
