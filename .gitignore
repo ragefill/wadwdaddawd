@@ -1,0 +1,19 @@
+# Unity
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Uu]serSettings/
+Assets/Plugins/Editor/
+*.csproj
+*.sln
+*.userprefs
+UnityGenerated/
+.vscode/
+.idea/
+*.pidb
+
+# OS
+.DS_Store
+Thumbs.db

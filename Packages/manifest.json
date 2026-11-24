@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "com.unity.inputsystem": "1.6.0",
+    "com.unity.xr.pluginmanagement": "4.2.1",
+    "com.unity.xr.openxr": "1.6.2",
+    "com.unity.xr.oculus": "4.2.1"
+  },
+  "registry": "https://packages.unity.com"
+}
