@@ -31,7 +31,7 @@ Punch people and NPCs, spawn NPCs, and spawn items: **brass knuckles, swords, br
 
 | Action | VR (Quest/OpenXR) | Keyboard fallback |
 |---|---|---|
-| Move / swing | Hold **Grip** on either hand, swing arm, release | Hold **Shift** (L/R), move mouse |
+| Move | Swing your arms; **collide your hand with a wall/floor/object to push off** and launch | **WASD** |
 | Jump | **A / X** button | **Space** |
 | Grab item | **Grip** + touch | **E** near item |
 | Throw | Release grip | **F** |
@@ -40,6 +40,8 @@ Punch people and NPCs, spawn NPCs, and spawn items: **brass knuckles, swords, br
 | Spawn (in menu) | Trigger on highlighted item | **1-6** keys |
 
 Spawn keys: `1` NPC, `2` Brass Knuckles, `3` Sword, `4` Brick, `5` Vase, `6` Plate, `7` Cup.
+
+Locomotion note: there is **no hold-to-grab toggle**. Move your hands to propel yourself, and bump your hands into surfaces to push off them (Gorilla Tag style).
 
 ## Project layout
 - `Assets/Scripts/` — all gameplay code (locomotion, combat, gore, spawning, items, NPC AI).
@@ -57,5 +59,16 @@ git remote add origin https://github.com/YOURUSER/YOURREPO.git
 git push -u origin main
 ```
 
-## APK build
-File > Build Settings > Android > Switch Platform > Build. Install with `adb install GoreSandboxVR.apk` or side-load onto Quest.
+## APK build (you do this — I can't compile Unity here)
+
+I don't have Unity installed, so I can't compile the APK binary for you. You build it in the Unity Editor:
+
+1. Open `C:\Users\hujhgughu\GoreSandboxVR` in **Unity 2022.3 LTS / 2023.2+** (3D Core / URP).
+2. **Window > Package Manager**: install Input System, XR Plugin Management, OpenXR (+ Oculus for Quest).
+3. **Player Settings > XR Plug-in Management**: enable OpenXR (and Oculus if targeting Quest).
+4. **Player Settings > Android**: enable **Virtual Reality Supported**, set Package Name, Min API Level 24+, Target API Level 30+.
+5. **Tools > Gore Sandbox > Create Scene** to build the demo scene.
+6. **File > Build Settings > Android > Switch Platform > Build** → choose a folder → produces `GoreSandboxVR.apk`.
+7. Install: `adb install GoreSandboxVR.apk` or side-load onto Quest.
+
+No Unity license is required for the free Personal edition to build and test.

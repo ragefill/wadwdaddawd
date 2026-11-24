@@ -4,9 +4,15 @@ using UnityEngine.XR;
 namespace GoreSandbox
 {
     /// <summary>
-    /// Gorilla Tag style arm-swing locomotion.
-    /// Hold grip on a hand and swing it to pull your body. Let go to keep momentum.
-    /// Falls back to keyboard/mouse when no XR device is present.
+    /// Gorilla Tag locomotion reworked: no "hold grip then release" toggle.
+    ///
+    /// Your hands drive movement directly:
+    ///   * Swing your arms -> your body accelerates in that direction (arm-swim).
+    ///   * Collide your hand with a wall/floor/object -> you push off it (launch away
+    ///     from the surface normal with a little upward bounce).
+    ///   * Momentum carries you; friction slows you on the ground and in the air.
+    ///
+    /// Falls back to WASD + Space when no XR headset is present.
     /// </summary>
     [RequireComponent(typeof(CharacterController))]
     public class GorillaLocomotion : MonoBehaviour
@@ -18,22 +24,27 @@ namespace GoreSandbox
         public Transform playerRig;
 
         [Header("Movement")]
-        public float slideSpeed = 13f;
-        public float jumpVelocity = 9f;
-        public float gravity = 36f;
-        public float maxSwingSpeed = 24f;
+        public float swingAcceleration = 45f;   // how strongly hand motion moves your body
+        public float maxSpeed = 24f;
+        public float groundFriction = 10f;
+        public float airFriction = 3f;
         public float airControl = 0.5f;
-        public LayerMask groundLayer = Physics.DefaultRaycastLayers;
+        public float jumpVelocity = 10f;
+        public float gravity = 38f;
 
-        [Header("Input (keyboard fallback)")]
-        public KeyCode leftGrabKey = KeyCode.LeftShift;
-        public KeyCode rightGrabKey = KeyCode.RightShift;
+        [Header("Hand push-off (collide with hands to move)")]
+        public float pushOffForce = 18f;
+        public float pushOffRadius = 0.14f;
+        public float pushOffCooldown = 0.12f;
+        public LayerMask pushableLayers = Physics.DefaultRaycastLayers;
+
+        [Header("Keyboard fallback (no VR)")]
         public KeyCode jumpKey = KeyCode.Space;
 
         CharacterController cc;
         Vector3 velocity;
-        bool grounded;
         Vector3 leftLastPos, rightLastPos;
+        float leftPushCD, rightPushCD;
 
         void Awake()
         {
@@ -44,95 +55,113 @@ namespace GoreSandbox
 
         void Update()
         {
-            bool lGrab = GetGrab(XRNode.LeftHand, leftGrabKey);
-            bool rGrab = GetGrab(XRNode.RightHand, rightGrabKey);
+            float dt = Time.deltaTime;
 
-            Vector3 lPos = leftHand ? leftHand.position : transform.position;
-            Vector3 rPos = rightHand ? rightHand.position : transform.position;
+            Vector3 lPos = GetHandPosition(XRNode.LeftHand);
+            Vector3 rPos = GetHandPosition(XRNode.RightHand);
 
-            Vector3 swing = Vector3.zero;
+            // ---- Arm-swing propulsion: moving your hands moves your body ----
+            Vector3 lDelta = lPos - leftLastPos;
+            Vector3 rDelta = rPos - rightLastPos;
 
-            if (lGrab)
+            Vector3 wish = Flatten(lDelta + rDelta) * swingAcceleration;
+
+            float friction = cc.isGrounded ? groundFriction : airFriction * airControl;
+            velocity = Vector3.MoveTowards(velocity, wish, friction * dt);
+
+            // Cap horizontal speed
+            Vector3 flat = new Vector3(velocity.x, 0f, velocity.z);
+            if (flat.magnitude > maxSpeed)
+                velocity = new Vector3(flat.normalized * maxSpeed, velocity.y);
+
+            // ---- Push-off: collide your hand with the world to launch ----
+            TryPushOff(leftHand, ref leftPushCD);
+            TryPushOff(rightHand, ref rightPushCD);
+
+            // ---- Gravity / jump ----
+            if (cc.isGrounded)
             {
-                Vector3 d = leftLastPos - lPos;
-                swing += ProjectOnPlane(d);
-            }
-            if (rGrab)
-            {
-                Vector3 d = rightLastPos - rPos;
-                swing += ProjectOnPlane(d);
-            }
+                velocity.y = -2f;
+                if (Input.GetKeyDown(jumpKey)) velocity.y = jumpVelocity;
 
-            if (lGrab || rGrab)
-            {
-                Vector3 move = swing * slideSpeed * Time.deltaTime;
-                if (move.magnitude > maxSwingSpeed * Time.deltaTime)
-                    move = move.normalized * maxSwingSpeed * Time.deltaTime;
-                cc.Move(move);
-                velocity = move / Time.deltaTime;
+                // XR primary button (A / X) also jumps
+                foreach (var node in new[] { XRNode.LeftHand, XRNode.RightHand })
+                {
+                    var dev = InputDevices.GetDeviceAtXRNode(node);
+                    if (dev.isValid && dev.TryGetFeatureValue(CommonUsages.primaryButton, out bool b) && b)
+                        velocity.y = jumpVelocity;
+                }
             }
             else
             {
-                velocity *= Mathf.Pow(0.4f, Time.deltaTime * 10f);
-                if (grounded) cc.Move(velocity * Time.deltaTime * airControl);
+                velocity.y -= gravity * dt;
             }
 
-            grounded = cc.isGrounded;
+            cc.Move(velocity * dt);
 
-            if (grounded && GetJump())
-                velocity.y = jumpVelocity;
-
-            ApplyGravity();
+            // ---- Keyboard WASD fallback ----
+            if (!HasXRDevice())
+            {
+                Vector3 kb = new Vector3(Input.GetAxis("Horizontal"), 0f, Input.GetAxis("Vertical"));
+                if (kb.sqrMagnitude > 0.0001f)
+                {
+                    kb = Flatten(kb).normalized * swingAcceleration * dt;
+                    cc.Move(kb);
+                }
+            }
 
             leftLastPos = lPos;
             rightLastPos = rPos;
         }
 
-        bool GetGrab(XRNode node, KeyCode key)
+        Vector3 Flatten(Vector3 v)
         {
-            if (Input.GetKey(key)) return true;
-            var dev = InputDevices.GetDeviceAtXRNode(node);
-            if (!dev.isValid) return false;
-            dev.TryGetFeatureValue(CommonUsages.gripButton, out bool v);
+            v.y = 0f;
             return v;
         }
 
-        bool GetJump()
+        Vector3 GetHandPosition(XRNode node)
         {
-            if (Input.GetKeyDown(jumpKey)) return true;
-            foreach (var node in new[] { XRNode.LeftHand, XRNode.RightHand })
-            {
-                var dev = InputDevices.GetDeviceAtXRNode(node);
-                if (dev.isValid && dev.TryGetFeatureValue(CommonUsages.primaryButton, out bool v) && v)
-                    return true;
-            }
-            return false;
+            var dev = InputDevices.GetDeviceAtXRNode(node);
+            if (dev.isValid && dev.TryGetFeatureValue(CommonUsages.devicePosition, out Vector3 p))
+                return p;
+
+            var t = node == XRNode.LeftHand ? leftHand : rightHand;
+            return t != null ? t.position : transform.position;
         }
 
-        Vector3 ProjectOnPlane(Vector3 v)
+        void TryPushOff(Transform hand, ref float cd)
         {
-            Vector3 flat = new Vector3(v.x, 0f, v.z);
-            if (head != null)
+            if (hand == null) return;
+            cd -= Time.deltaTime;
+            if (cd > 0f) return;
+
+            // Did our hand just collide with something?
+            Collider[] hits = Physics.OverlapSphere(hand.position, pushOffRadius, pushableLayers, QueryTriggerInteraction.Ignore);
+            if (hits.Length == 0) return;
+
+            Vector3 push = Vector3.zero;
+            foreach (var c in hits)
             {
-                // swing relative to camera facing
-                Vector3 f = head.forward; f.y = 0; f.Normalize();
-                Vector3 r = head.right; r.y = 0; r.Normalize();
-                return flat.x * r + flat.z * f;
+                Vector3 closest = c.ClosestPoint(hand.position);
+                Vector3 dir = (hand.position - closest);
+                if (dir.sqrMagnitude > 0.0001f)
+                    push += dir.normalized;
             }
-            return flat;
+
+            if (push.sqrMagnitude > 0.0001f)
+            {
+                push.Normalize();
+                push.y = Mathf.Max(push.y, 0.3f); // always a little upward hop
+                velocity += push * pushOffForce;
+                cd = pushOffCooldown;
+            }
         }
 
-        void ApplyGravity()
+        bool HasXRDevice()
         {
-            if (!grounded)
-            {
-                velocity.y -= gravity * Time.deltaTime;
-                cc.Move(velocity * Time.deltaTime);
-            }
-            else if (velocity.y < 0f)
-            {
-                velocity.y = -2f;
-            }
+            return InputDevices.GetDeviceAtXRNode(XRNode.LeftHand).isValid
+                || InputDevices.GetDeviceAtXRNode(XRNode.RightHand).isValid;
         }
 
         public Vector3 GetVelocity() => velocity;
