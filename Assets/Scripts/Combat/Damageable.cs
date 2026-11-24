@@ -35,7 +35,6 @@ namespace GoreSandbox
         float lastDamageTime;
 
         public float Health => health;
-        public bool Dead => dead;
 
         protected virtual void Awake()
         {
