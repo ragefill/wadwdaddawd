@@ -16,7 +16,7 @@ namespace GoreSandbox
             var mr = GetComponent<MeshRenderer>();
             if (mr != null)
             {
-                var mat = new Material(Shader.Find("Universal Render Pipeline/Lit")) {
+                var mat = new Material(Shader.Find("Legacy Shaders/Transparent/Cutout/Diffuse")) {
                     color = new Color(0.55f, 0.05f, 0.05f, 1f)
                 };
                 mr.material = mat;

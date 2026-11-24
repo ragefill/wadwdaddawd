@@ -5,6 +5,7 @@ namespace GoreSandbox
     /// <summary>
     /// Put on each hand. Deals punch damage based on hand velocity.
     /// BrassKnuckles on the same hand multiplies damage.
+    /// Uses OnTriggerEnter because the hand collider is a trigger.
     /// </summary>
     public class PunchImpact : MonoBehaviour
     {
@@ -16,13 +17,13 @@ namespace GoreSandbox
 
         void Awake() => hand = GetComponent<VHand>();
 
-        void OnCollisionEnter(Collision col)
+        void OnTriggerEnter(Collider other)
         {
-            if (hand == null || !hand.isGrabbing) return; // only punch with an open/swinging hand
+            if (hand == null || hand.isGrabbing) return; // only punch with an empty hand
             float vel = hand.GetVelocity().magnitude;
             if (vel < minVelocity) return;
 
-            var dmg = col.gameObject.GetComponentInParent<Damageable>();
+            var dmg = other.GetComponentInParent<Damageable>();
             if (dmg == null) return;
 
             float knuckleMult = 1f;
@@ -30,11 +31,16 @@ namespace GoreSandbox
             if (knuckles != null) knuckleMult = knuckles.multiplier;
 
             float damage = (baseDamage + vel * velocityMultiplier) * knuckleMult;
-            dmg.TakeDamage(damage, col.contacts[0].point, col.contacts[0].normal, DamageType.Blunt, gameObject);
 
-            var rb = col.rigidbody;
+            Vector3 point = other.ClosestPoint(transform.position);
+            Vector3 normal = (transform.position - point).normalized;
+            if (normal.sqrMagnitude < 0.0001f) normal = transform.up;
+
+            dmg.TakeDamage(damage, point, normal, DamageType.Blunt, gameObject);
+
+            var rb = other.attachedRigidbody;
             if (rb != null && !rb.isKinematic)
-                rb.AddForceAtPosition(col.relativeVelocity.normalized * damage * 0.15f, col.contacts[0].point, ForceMode.Impulse);
+                rb.AddForceAtPosition(normal * damage * 0.15f, point, ForceMode.Impulse);
         }
     }
 }

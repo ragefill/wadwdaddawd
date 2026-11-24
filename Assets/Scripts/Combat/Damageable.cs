@@ -105,6 +105,15 @@ namespace GoreSandbox
             if (animator != null) animator.enabled = false;
             SetRagdoll(true);
 
+            // let the body fall over if it was using a CharacterController
+            var cc = GetComponent<CharacterController>();
+            if (cc != null)
+            {
+                cc.enabled = false;
+                var rb = gameObject.AddComponent<Rigidbody>();
+                rb.interpolation = RigidbodyInterpolation.Interpolate;
+            }
+
             // spawn a big blood pool
             GoreManager.Instance?.SpawnPool(transform.position + Vector3.up * 0.5f, 6f);
 

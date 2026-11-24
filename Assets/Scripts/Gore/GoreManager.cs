@@ -28,7 +28,7 @@ namespace GoreSandbox
             go.transform.position = point;
             go.transform.localScale = new Vector3(radius, 0.02f, radius);
             var mr = go.GetComponent<MeshRenderer>();
-            var mat = new Material(Shader.Find("Universal Render Pipeline/Lit")) {
+            var mat = new Material(Shader.Find("Legacy Shaders/Transparent/Diffuse")) {
                 color = new Color(0.35f, 0.03f, 0.03f, 0.9f)
             };
             mr.material = mat;
@@ -45,7 +45,7 @@ namespace GoreSandbox
             go.transform.rotation = Quaternion.LookRotation(normal);
             go.transform.localScale = Vector3.one * decalSize;
             var mr = go.GetComponent<MeshRenderer>();
-            var mat = new Material(Shader.Find("Universal Render Pipeline/Lit")) {
+            var mat = new Material(Shader.Find("Legacy Shaders/Transparent/Cutout/Diffuse")) {
                 color = new Color(0.5f, 0.04f, 0.04f, 1f)
             };
             mr.material = mat;

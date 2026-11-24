@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.XR;
 
 namespace GoreSandbox
 {
@@ -17,18 +18,21 @@ namespace GoreSandbox
 
         FixedJoint joint;
         Collider[] overlap = new Collider[8];
+        Vector3 lastPos;
 
         void Update()
         {
             bool pressed = Input.GetKey(grabKey);
             var dev = InputDevices.GetDeviceAtXRNode(node);
-            if (dev.isValid) dev.TryGetFeatureValue(CommonUsages.gripButton, out bool grip);
-            else grip = pressed;
+            bool grip = pressed;
+            if (dev.isValid) dev.TryGetFeatureValue(CommonUsages.gripButton, out grip);
 
             if (grip && held == null)
                 TryGrab();
             else if (!grip && held != null)
                 Release();
+
+            lastPos = transform.position;
         }
 
         void TryGrab()
@@ -78,7 +82,11 @@ namespace GoreSandbox
             var dev = InputDevices.GetDeviceAtXRNode(node);
             if (dev.isValid && dev.TryGetFeatureValue(CommonUsages.deviceVelocity, out Vector3 v))
                 return v;
-            return Vector3.zero;
+
+            // Editor / keyboard fallback: estimate from position delta
+            Vector3 cur = transform.position;
+            Vector3 delta = (cur - lastPos) / Time.deltaTime;
+            return delta;
         }
     }
 }

@@ -49,7 +49,7 @@ namespace GoreSandbox
             if (parent != null) go.transform.SetParent(parent, true);
 
             var mr = go.GetComponent<MeshRenderer>();
-            var mat = new Material(Shader.Find("Universal Render Pipeline/Lit")) {
+            var mat = new Material(Shader.Find("Legacy Shaders/Transparent/Cutout/Diffuse")) {
                 mainTexture = tex,
                 color = new Color(0.6f, 0.06f, 0.06f, 1f)
             };

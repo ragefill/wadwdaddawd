@@ -1,13 +1,20 @@
 using UnityEngine;
-using UnityEngine.UI;
 using UnityEditor;
+using UnityEditor.SceneManagement;
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
+using System.IO;
+using System.Collections.Generic;
 
 namespace GoreSandbox.Editor
 {
     /// <summary>
-    /// One-click demo scene builder. Tools > Gore Sandbox > Create Scene.
+    /// One-click demo scene builder for Unity 2022.3.2f1 (Built-in renderer).
+    /// Tools > Gore Sandbox > Create Scene
+    ///
     /// Creates floor, walls, lights, player rig with Gorilla Tag locomotion,
-    /// hands with punch impact, GameManager, GoreManager, and spawn menu.
+    /// hands with trigger-based punching, GameManager, GoreManager, spawn menu,
+    /// and all spawnable prefabs (NPC, brass knuckles, sword, brick, vase, plate, cup).
     /// </summary>
     public static class SceneBuilder
     {
@@ -18,21 +25,24 @@ namespace GoreSandbox.Editor
             foreach (var go in Object.FindObjectsOfType<GameObject>(true))
                 if (go.name.StartsWith("[GS]")) Object.DestroyImmediate(go);
 
-            // Floor
+            // ---------- Materials (built-in shaders, no URP required) ----------
+            var floorMat = new Material(Shader.Find("Standard")) { color = new Color(0.18f, 0.18f, 0.2f) };
+            var wallMat = new Material(Shader.Find("Standard")) { color = new Color(0.22f, 0.22f, 0.24f) };
+
+            // ---------- Floor ----------
             var floor = GameObject.CreatePrimitive(PrimitiveType.Plane);
             floor.name = "[GS] Floor";
             floor.transform.localScale = new Vector3(20, 1, 20);
-            var floorMat = new Material(Shader.Find("Universal Render Pipeline/Lit")) { color = new Color(0.18f, 0.18f, 0.2f) };
             floor.GetComponent<MeshRenderer>().material = floorMat;
             var floorRb = floor.AddComponent<Rigidbody>();
             floorRb.isKinematic = true;
 
-            // Containment walls
-            MakeWall("[GS] WallBack", new Vector3(0, 3, -12), new Vector3(26, 6, 1));
-            MakeWall("[GS] WallLeft", new Vector3(-13, 3, 0), new Vector3(1, 6, 26));
-            MakeWall("[GS] WallRight", new Vector3(13, 3, 0), new Vector3(1, 6, 26));
+            // ---------- Walls ----------
+            MakeWall("[GS] WallBack", new Vector3(0, 3, -12), new Vector3(26, 6, 1), wallMat);
+            MakeWall("[GS] WallLeft", new Vector3(-13, 3, 0), new Vector3(1, 6, 26), wallMat);
+            MakeWall("[GS] WallRight", new Vector3(13, 3, 0), new Vector3(1, 6, 26), wallMat);
 
-            // Light
+            // ---------- Light ----------
             var sun = new GameObject("[GS] Sun");
             sun.transform.rotation = Quaternion.Euler(50, -30, 0);
             var light = sun.AddComponent<Light>();
@@ -40,7 +50,7 @@ namespace GoreSandbox.Editor
             light.intensity = 1.2f;
             light.color = new Color(1f, 0.95f, 0.85f);
 
-            // Player rig
+            // ---------- Player rig ----------
             var rig = new GameObject("[GS] PlayerRig");
             rig.transform.position = new Vector3(0, 1.2f, 0);
             var locomotion = rig.AddComponent<GorillaLocomotion>();
@@ -63,15 +73,35 @@ namespace GoreSandbox.Editor
             player.leftHand = lhand.transform;
             player.rightHand = rhand.transform;
 
-            // GameManager
+            // ---------- GameManager ----------
             var gmGO = new GameObject("[GS] GameManager");
             var gm = gmGO.AddComponent<GameManager>();
             gm.player = rig.transform;
 
-            // Gore manager
+            // ---------- GoreManager ----------
             new GameObject("[GS] GoreManager").AddComponent<GoreManager>();
 
-            // Spawn menu canvas (world space)
+            // ---------- Prefabs ----------
+            var npcPrefab = MakeNPCPrefab();
+            var knucklesPrefab = MakeKnucklesPrefab();
+            var swordPrefab = MakeSwordPrefab();
+            var brickPrefab = MakeBrickPrefab();
+            var vasePrefab = MakeVasePrefab();
+            var platePrefab = MakePlatePrefab();
+            var cupPrefab = MakeCupPrefab();
+
+            // Assign prefabs to GameManager via SerializedObject
+            var so = new SerializedObject(gm);
+            so.FindProperty("npcPrefab").objectReferenceValue = npcPrefab;
+            so.FindProperty("brassKnucklesPrefab").objectReferenceValue = knucklesPrefab;
+            so.FindProperty("swordPrefab").objectReferenceValue = swordPrefab;
+            so.FindProperty("brickPrefab").objectReferenceValue = brickPrefab;
+            so.FindProperty("vasePrefab").objectReferenceValue = vasePrefab;
+            so.FindProperty("platePrefab").objectReferenceValue = platePrefab;
+            so.FindProperty("cupPrefab").objectReferenceValue = cupPrefab;
+            so.ApplyModifiedProperties();
+
+            // ---------- Spawn menu canvas ----------
             var canvasGO = new GameObject("[GS] SpawnMenuCanvas");
             canvasGO.transform.SetParent(rig.transform, false);
             var canvas = canvasGO.AddComponent<Canvas>();
@@ -110,6 +140,16 @@ namespace GoreSandbox.Editor
                 Wire(label, btn);
             }
 
+            // ---------- Save scene & add to build settings ----------
+            string scenePath = "Assets/Scenes/GoreSandbox.unity";
+            Directory.CreateDirectory("Assets/Scenes");
+            EditorSceneManager.SaveScene(SceneManager.GetActiveScene(), scenePath);
+
+            var scenes = new List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
+            if (!scenes.Exists(s => s.path == scenePath))
+                scenes.Add(new EditorBuildSettingsScene(scenePath, true));
+            EditorBuildSettings.scenes = scenes.ToArray();
+
             Selection.activeObject = rig;
             Debug.Log("[O] Gore Sandbox scene created. Press Play.");
         }
@@ -135,12 +175,13 @@ namespace GoreSandbox.Editor
             }
         }
 
-        static GameObject MakeWall(string name, Vector3 pos, Vector3 scale)
+        static GameObject MakeWall(string name, Vector3 pos, Vector3 scale, Material mat)
         {
             var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
             go.name = name;
             go.transform.position = pos;
             go.transform.localScale = scale;
+            go.GetComponent<MeshRenderer>().material = mat;
             var rb = go.AddComponent<Rigidbody>();
             rb.isKinematic = true;
             return go;
@@ -153,11 +194,155 @@ namespace GoreSandbox.Editor
             go.transform.localPosition = localPos;
             var col = go.AddComponent<BoxCollider>();
             col.size = Vector3.one * 0.18f;
-            col.isTrigger = true;
+            col.isTrigger = true; // trigger so PunchImpact.OnTriggerEnter fires
             var hand = go.AddComponent<VHand>();
             hand.node = node;
             go.AddComponent<PunchImpact>();
             return go;
+        }
+
+        // ---------- Prefab creators ----------
+
+        static GameObject MakeNPCPrefab()
+        {
+            var go = new GameObject("NPC");
+            go.transform.localScale = Vector3.one;
+            var body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            body.transform.SetParent(go.transform, false);
+            body.transform.localPosition = Vector3.up * 1f;
+            body.transform.localScale = new Vector3(0.5f, 1f, 0.5f);
+            body.GetComponent<MeshRenderer>().material = new Material(Shader.Find("Standard")) { color = new Color(0.6f, 0.3f, 0.3f) };
+            Object.DestroyImmediate(body.GetComponent<Collider>());
+
+            var cc = go.AddComponent<CharacterController>();
+            cc.height = 2f;
+            cc.radius = 0.5f;
+            cc.center = Vector3.up * 1f;
+
+            var dmg = go.AddComponent<Damageable>();
+            dmg.isNPC = true;
+            dmg.health = 100f;
+
+            go.AddComponent<NPC>();
+
+            return SavePrefab(go, "NPC");
+        }
+
+        static GameObject MakeKnucklesPrefab()
+        {
+            var go = new GameObject("BrassKnuckles");
+            var body = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            body.transform.SetParent(go.transform, false);
+            body.transform.localScale = new Vector3(0.15f, 0.15f, 0.3f);
+            body.transform.localPosition = Vector3.forward * 0.2f;
+            body.GetComponent<MeshRenderer>().material = new Material(Shader.Find("Standard")) { color = new Color(0.8f, 0.7f, 0.6f) };
+            Object.DestroyImmediate(body.GetComponent<Collider>());
+
+            var col = go.AddComponent<BoxCollider>();
+            col.size = new Vector3(0.15f, 0.15f, 0.3f);
+            col.center = Vector3.forward * 0.2f;
+
+            go.AddComponent<VGrabbable>();
+            var w = go.AddComponent<Weapon>();
+            w.damageType = DamageType.Blunt;
+            w.baseDamage = 8f;
+            w.velocityDamageMultiplier = 3f;
+            go.AddComponent<BrassKnuckles>();
+
+            return SavePrefab(go, "BrassKnuckles");
+        }
+
+        static GameObject MakeSwordPrefab()
+        {
+            var go = new GameObject("Sword");
+            var blade = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            blade.transform.SetParent(go.transform, false);
+            blade.transform.localPosition = Vector3.forward * 0.5f;
+            blade.transform.localScale = new Vector3(0.1f, 0.8f, 0.2f);
+            blade.GetComponent<MeshRenderer>().material = new Material(Shader.Find("Standard")) { color = new Color(0.8f, 0.8f, 0.9f) };
+            Object.DestroyImmediate(blade.GetComponent<Collider>());
+
+            var handle = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            handle.transform.SetParent(go.transform, false);
+            handle.transform.localPosition = Vector3.back * 0.3f;
+            handle.transform.localScale = new Vector3(0.15f, 0.3f, 0.15f);
+            handle.GetComponent<MeshRenderer>().material = new Material(Shader.Find("Standard")) { color = new Color(0.3f, 0.2f, 0.2f) };
+            Object.DestroyImmediate(handle.GetComponent<Collider>());
+
+            var col = go.AddComponent<BoxCollider>();
+            col.size = new Vector3(0.2f, 1f, 0.3f);
+            col.center = Vector3.forward * 0.2f;
+
+            go.AddComponent<VGrabbable>();
+            var w = go.AddComponent<Weapon>();
+            w.damageType = DamageType.Slash;
+            w.baseDamage = 35f;
+            w.velocityDamageMultiplier = 4f;
+            w.knockback = 10f;
+            go.AddComponent<Sword>();
+
+            return SavePrefab(go, "Sword");
+        }
+
+        static GameObject MakeBrickPrefab()
+        {
+            var go = new GameObject("Brick");
+            var body = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            body.transform.localScale = new Vector3(0.4f, 0.2f, 0.2f);
+            body.GetComponent<MeshRenderer>().material = new Material(Shader.Find("Standard")) { color = new Color(0.7f, 0.5f, 0.4f) };
+            go.AddComponent<VGrabbable>();
+            var br = go.AddComponent<Breakable>();
+            br.breakVelocity = 5f;
+            br.shardCount = 10;
+            return SavePrefab(go, "Brick");
+        }
+
+        static GameObject MakeVasePrefab()
+        {
+            var go = new GameObject("Vase");
+            var body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            body.transform.localScale = new Vector3(0.25f, 0.5f, 0.25f);
+            body.GetComponent<MeshRenderer>().material = new Material(Shader.Find("Standard")) { color = new Color(0.2f, 0.4f, 0.8f) };
+            go.AddComponent<VGrabbable>();
+            var br = go.AddComponent<Breakable>();
+            br.breakVelocity = 4f;
+            br.shardCount = 12;
+            return SavePrefab(go, "Vase");
+        }
+
+        static GameObject MakePlatePrefab()
+        {
+            var go = new GameObject("Plate");
+            var body = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            body.transform.localScale = new Vector3(0.6f, 0.05f, 0.6f);
+            body.GetComponent<MeshRenderer>().material = new Material(Shader.Find("Standard")) { color = new Color(0.9f, 0.9f, 0.9f) };
+            go.AddComponent<VGrabbable>();
+            var br = go.AddComponent<Breakable>();
+            br.breakVelocity = 4f;
+            br.shardCount = 10;
+            return SavePrefab(go, "Plate");
+        }
+
+        static GameObject MakeCupPrefab()
+        {
+            var go = new GameObject("Cup");
+            var body = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            body.transform.localScale = new Vector3(0.2f, 0.4f, 0.2f);
+            body.GetComponent<MeshRenderer>().material = new Material(Shader.Find("Standard")) { color = new Color(0.8f, 0.2f, 0.2f) };
+            go.AddComponent<VGrabbable>();
+            var br = go.AddComponent<Breakable>();
+            br.breakVelocity = 4f;
+            br.shardCount = 8;
+            return SavePrefab(go, "Cup");
+        }
+
+        static GameObject SavePrefab(GameObject go, string name)
+        {
+            Directory.CreateDirectory("Assets/Prefabs");
+            string path = "Assets/Prefabs/" + name + ".prefab";
+            var prefab = PrefabUtility.SaveAsPrefabAsset(go, path);
+            Object.DestroyImmediate(go);
+            return prefab;
         }
     }
 }
