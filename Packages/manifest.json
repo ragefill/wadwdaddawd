@@ -2,7 +2,12 @@
   "dependencies": {
     "com.unity.inputsystem": "1.6.0",
     "com.unity.xr.pluginmanagement": "4.2.1",
-    "com.unity.xr.openxr": "1.6.2"
+    "com.unity.xr.openxr": "1.6.2",
+    "com.unity.ugui": "1.0.0",
+    "com.unity.modules.animation": "1.0.0",
+    "com.unity.modules.particlesystem": "1.0.0",
+    "com.unity.modules.physics": "1.0.0",
+    "com.unity.modules.audio": "1.0.0"
   },
   "registry": "https://packages.unity.com"
 }

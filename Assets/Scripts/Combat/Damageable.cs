@@ -36,7 +36,7 @@ namespace GoreSandbox
         public float Health => health;
         public bool Dead => dead;
 
-        void Awake()
+        protected virtual void Awake()
         {
             maxHealth = health;
             SetRagdoll(false);
