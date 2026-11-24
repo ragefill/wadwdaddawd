@@ -4,7 +4,7 @@ namespace GoreSandbox
 {
     /// <summary>
     /// Equip on a hand to multiply punch damage and change damage type to blunt impact.
-    </summary>
+    /// </summary>
     public class BrassKnuckles : MonoBehaviour
     {
         public float multiplier = 2.2f;

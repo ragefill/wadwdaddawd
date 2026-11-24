@@ -21,7 +21,7 @@ namespace GoreSandbox
         public float slashDismemberThreshold = 30f;
         public GameObject detachedPartPrefab; // optional replacement visual for detached limb
 
-        [Header="Ragdoll")]
+        [Header("Ragdoll")]
         public Animator animator;
         public Rigidbody[] ragdollBodies;
         public Collider[] ragdollColliders;
