@@ -33,18 +33,18 @@ namespace GoreSandbox
                 if (nearest != null)
                 {
                     nearest.SetParent(null);
-                    var rb = nearest.GetComponent<Rigidbody>();
-                    if (rb == null) rb = nearest.gameObject.AddComponent<Rigidbody>();
-                    rb.isKinematic = false;
-                    rb.useGravity = true;
-                    rb.AddExplosionForce(500f, nearest.position, 1f, 2f);
+                    var limbRb = nearest.GetComponent<Rigidbody>();
+                    if (limbRb == null) limbRb = nearest.gameObject.AddComponent<Rigidbody>();
+                    limbRb.isKinematic = false;
+                    limbRb.useGravity = true;
+                    limbRb.AddExplosionForce(500f, nearest.position, 1f, 2f);
                     HitEffects.SpawnBlood(nearest.position, Vector3.up, 60f, nearest);
                 }
             }
 
-            var rb = col.rigidbody;
-            if (rb != null && !rb.isKinematic)
-                rb.AddForceAtPosition(col.relativeVelocity.normalized * knockback, col.contacts[0].point, ForceMode.Impulse);
+            var colRb = col.rigidbody;
+            if (colRb != null && !colRb.isKinematic)
+                colRb.AddForceAtPosition(col.relativeVelocity.normalized * knockback, col.contacts[0].point, ForceMode.Impulse);
         }
     }
 }

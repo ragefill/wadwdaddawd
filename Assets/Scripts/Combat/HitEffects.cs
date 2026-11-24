@@ -29,7 +29,6 @@ namespace GoreSandbox
             emit.SetBursts(new[] { new ParticleSystem.Burst(0f, count) });
 
             var shape = ps.shape;
-            shape.shapeType = ParticleSystemShapeType.Disc;
             shape.radius = 0.05f;
 
             var vel = ps.velocityOverLifetime;

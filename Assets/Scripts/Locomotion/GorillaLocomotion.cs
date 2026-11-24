@@ -72,7 +72,7 @@ namespace GoreSandbox
             // Cap horizontal speed
             Vector3 flat = new Vector3(velocity.x, 0f, velocity.z);
             if (flat.magnitude > maxSpeed)
-                velocity = new Vector3(flat.normalized * maxSpeed, velocity.y);
+                velocity = new Vector3(flat.normalized.x * maxSpeed, velocity.y, flat.normalized.z * maxSpeed);
 
             // ---- Push-off: collide your hand with the world to launch ----
             TryPushOff(leftHand, ref leftPushCD);

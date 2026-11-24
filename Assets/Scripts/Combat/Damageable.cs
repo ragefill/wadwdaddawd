@@ -30,7 +30,8 @@ namespace GoreSandbox
         public DamageEvent onDamage;
         public UnityEvent onDie;
 
-        bool dead;
+        protected bool dead;
+        public bool Dead => dead;
         float lastDamageTime;
 
         public float Health => health;
