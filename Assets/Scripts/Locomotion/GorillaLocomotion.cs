@@ -143,7 +143,8 @@ namespace GoreSandbox
             Vector3 push = Vector3.zero;
             foreach (var c in hits)
             {
-                Vector3 closest = c.ClosestPoint(hand.position);
+                // bounds.ClosestPoint works on every collider type (ClosestPoint crashes on non-convex meshes/terrain)
+                Vector3 closest = c.bounds.ClosestPoint(hand.position);
                 Vector3 dir = (hand.position - closest);
                 if (dir.sqrMagnitude > 0.0001f)
                     push += dir.normalized;

@@ -141,6 +141,15 @@ namespace GoreSandbox.Editor
                 Wire(label, btn);
             }
 
+            // ---------- Scatter breakable props around the map ----------
+            ScatterBreakable(npcPrefab, knucklesPrefab, swordPrefab, brickPrefab, vasePrefab, platePrefab, cupPrefab, new Vector3(-5f, 0.5f, -2f));
+            ScatterBreakable(npcPrefab, knucklesPrefab, swordPrefab, brickPrefab, vasePrefab, platePrefab, cupPrefab, new Vector3(5f, 0.5f, -2f));
+            ScatterBreakable(npcPrefab, knucklesPrefab, swordPrefab, brickPrefab, vasePrefab, platePrefab, cupPrefab, new Vector3(-8f, 0.5f, 2f));
+            ScatterBreakable(npcPrefab, knucklesPrefab, swordPrefab, brickPrefab, vasePrefab, platePrefab, cupPrefab, new Vector3(8f, 0.5f, 2f));
+            ScatterBreakable(npcPrefab, knucklesPrefab, swordPrefab, brickPrefab, vasePrefab, platePrefab, cupPrefab, new Vector3(0f, 0.5f, 6f));
+            ScatterBreakable(npcPrefab, knucklesPrefab, swordPrefab, brickPrefab, vasePrefab, platePrefab, cupPrefab, new Vector3(-4f, 0.5f, -8f));
+            ScatterBreakable(npcPrefab, knucklesPrefab, swordPrefab, brickPrefab, vasePrefab, platePrefab, cupPrefab, new Vector3(4f, 0.5f, -8f));
+
             // ---------- Save scene & add to build settings ----------
             string scenePath = "Assets/Scenes/GoreSandbox.unity";
             Directory.CreateDirectory("Assets/Scenes");
@@ -344,6 +353,20 @@ namespace GoreSandbox.Editor
             var prefab = PrefabUtility.SaveAsPrefabAsset(go, path);
             Object.DestroyImmediate(go);
             return prefab;
+        }
+
+        static void ScatterBreakable(GameObject npc, GameObject knuckles, GameObject sword, GameObject brick, GameObject vase, GameObject plate, GameObject cup, Vector3 pos)
+        {
+            System.Random rnd = new System.Random(pos.GetHashCode());
+            GameObject[] items = { brick, vase, plate, cup };
+            int count = 3 + rnd.Next(3);
+            for (int i = 0; i < count; i++)
+            {
+                var prefab = items[rnd.Next(items.Length)];
+                var go = Object.Instantiate(prefab, pos + new Vector3(rnd.Next(-30, 31) * 0.1f, 0f, rnd.Next(-30, 31) * 0.1f), Quaternion.Euler(0, rnd.Next(360), 0));
+                go.name = "[GS] Prop";
+                go.transform.position = new Vector3(go.transform.position.x, 0.5f, go.transform.position.z);
+            }
         }
     }
 }

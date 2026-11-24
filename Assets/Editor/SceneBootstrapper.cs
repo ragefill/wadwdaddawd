@@ -6,9 +6,8 @@ namespace GoreSandbox.Editor
 {
     /// <summary>
     /// Auto-creates the Gore Sandbox scene when the project opens.
-    /// Runs regardless of which scene is active. If GameManager is missing
-    /// from the scene, it builds the full demo (floor, walls, player rig,
-    /// hands, GameManager, GoreManager, spawn menu) and saves GoreSandbox.unity.
+    /// Cleans up any previous [GS] objects and rebuilds floor, walls, player rig,
+    /// hands, GameManager, GoreManager, spawn menu, and scattered breakable props.
     /// </summary>
     [InitializeOnLoad]
     public static class SceneBootstrapper
@@ -28,9 +27,6 @@ namespace GoreSandbox.Editor
 
             hasRun = true;
             EditorApplication.update -= OnUpdate;
-
-            // Only act if there's no GameManager already in the scene
-            if (Object.FindObjectOfType<GameManager>(true) != null) return;
 
             SceneBuilder.CreateScene();
         }
